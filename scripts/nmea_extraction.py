@@ -90,7 +90,6 @@ def nmea_callback(msg = Sentence):
             # debug
             # print(nmea_dict)
             
-
 def shutdown_callback():
     # debug 
     # print(nmea_dict)    
@@ -99,6 +98,9 @@ def shutdown_callback():
         
         with open(os.path.join(directory_path, csv_file_name), "w") as f:
             for nmea_index in nmea_index_list:
+                if len(nmea_dict[nmea_index]) == 1 and len(nmea_dict[nmea_index][0]) == 0:
+                    continue
+                
                 if "GSA" in nmea_index:
                     # Write Header
                     csv_writer = csv.writer(f)
@@ -112,7 +114,6 @@ def shutdown_callback():
                         else:
                             first_row_list.append(index)
                     csv_writer.writerow(first_row_list)
-
                 else:
                     # Write Header
                     csv_writer = csv.writer(f)
@@ -177,9 +178,12 @@ def shutdown_callback():
                 else:
                     # Write Detail
                     for nmea_dict_data_row in nmea_dict[nmea_index]:
+                        if len(nmea_dict_data_row) == 0:
+                            continue
                         row_tmp = [nmea_index]
                         row_tmp.extend(nmea_dict_data_row)
                         csv_writer.writerow(row_tmp)
+                        
     else:
         rospy.loginfo("No change happened.")
             
