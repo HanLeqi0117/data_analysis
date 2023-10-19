@@ -16,6 +16,7 @@ find_package(catkin REQUIRED COMPONENTS
   tf2
   tf2_geometry_msgs
   tf2_ros
+  nmea_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -110,7 +111,7 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
     INCLUDE_DIRS include
     LIBRARIES data_analysis
-    CATKIN_DEPENDS geometry_msgs nav_msgs roscpp rospy std_msgs tf2 tf2_geometry_msgs tf2_ros
+    CATKIN_DEPENDS geometry_msgs nav_msgs roscpp rospy std_msgs tf2 tf2_geometry_msgs tf2_ros nmea_msgs
     DEPENDS system_lib
 )
 
@@ -164,10 +165,10 @@ target_link_libraries(odometry_to_csv
 
 ## Mark executable scripts (Python etc.) for installation
 ## in contrast to setup.py, you can choose the destination
-# catkin_install_python(PROGRAMS
-#   scripts/my_python_script
-#   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-# )
+catkin_install_python(PROGRAMS
+  scripts/nmea_extraction.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
 
 ## Mark executables for installation
 ## See http://docs.ros.org/melodic/api/catkin/html/howto/format1/building_executables.html

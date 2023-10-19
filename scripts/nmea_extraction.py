@@ -1,12 +1,17 @@
+#! /usr/bin/python3
+
 import os
 import sys
 import csv
 import rospy
 from nmea_msgs.msg import Sentence
 
-directory_path = str
+directory_path = str()
+csv_file_name = str()
 nmea_index_list = ["GGA", "GSV", "GSA", "GLL", "ZDA", "VTG", "RMC"]
-nmea_dict = {str : [[]]}
+nmea_dict = dict()
+for nmea_index in nmea_index_list:
+    nmea_dict[nmea_index] = [[]]
 ros_message_header_list = ["Sequence", "FrameID", "RosSec", "RosNsec"]
 
 # 参考URL:https://www.hdlc.jp/~jh8xvh/jp/gps/nmea.html
@@ -74,18 +79,21 @@ def nmea_callback(msg = Sentence):
             # Sentence String -> List
             for detail in msg.sentence[:-3].split(","):
                 if "$" in detail:
-                    detail.strip("$")
-                    list_tmp.append(detail[:-3])
-                    list_tmp.append(detail[:2])
+                    str_tmp = detail.strip("$")
+                    list_tmp.append(str_tmp[:-3])
+                    list_tmp.append(str_tmp[2:])
                 else:
                     list_tmp.append(detail)
 
-            nmea_dict[index].append()
+            nmea_dict[index].append(list_tmp)
+            # debug
+            # print(nmea_dict)
             
 
 def shutdown_callback():
     # debug 
-    print(nmea_dict)
+    # print(nmea_dict)
+    rospy.loginfo("NmeaSentence Data is saved in [{}/{}]".format(directory_path, csv_file_name))
     
     with open(os.path.join(directory_path, "nmea_sentence_table.csv"), "w") as f:
         for nmea_index in nmea_index_list:
@@ -169,17 +177,35 @@ def shutdown_callback():
 if __name__ == '__main__':
     
     rospy.init_node(name="nmea_extraction")
-    if len(sys.argv) < 1:
-        rospy.loginfo("Need two argument which like: [-d Path to save csv]")
-        pass
+    if len(sys.argv) < 4:
+        rospy.loginfo("usage: [-d Path to save csv] [-f CSV file name]")
+        rospy.signal_shutdown("Need Path and name Arguments")
     
     if '-d' in sys.argv:
         directory_path = sys.argv[sys.argv.index('-d') + 1]
         if not (os.path.exists(directory_path) or os.path.isdir(directory_path)):
-            rospy.logerr("Wrong directory path!")
-            pass
+            rospy.logerr("Directory given is not existed!")
+            rospy.signal_shutdown("Wrong directory path")
+    else:
+        rospy.logerr("-d option need!")
     
-    rospy.Subscriber("nmea_sentence", Sentence, nmea_callback)
+    if '-f' in sys.argv:
+        csv_file_name = sys.argv[sys.argv.index('-f') + 1]
+        if csv_file_name in os.listdir(directory_path):
+            if ".csv" in csv_file_name: 
+                head_tmp = csv_file_name.strip(".csv")
+                head_tmp = head_tmp + "+.csv"
+            else:
+                csv_file_name = csv_file_name + ".csv"
+            rospy.logwarn("File name given is existed, change it to {}".format(csv_file_name))
+        elif csv_file_name == '':
+            csv_file_name = "NmeaSentence_to_csv.csv"
+            rospy.logwarn("File name is empty, change it to default: {}".format(csv_file_name))
+    else:
+        rospy.logerr("-f option need!")
+    
+    rospy.Subscriber("nmea_sentence", Sentence, nmea_callback, queue_size=30)
+    rospy.loginfo("Ready to receive NmeaSentence from Topic.")
     rospy.spin()
     rospy.on_shutdown(shutdown_callback)
     
