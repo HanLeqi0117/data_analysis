@@ -74,9 +74,9 @@ def nmea_callback(msg = Sentence):
             list_tmp = []
             # Header of ROS Message
             list_tmp.append(msg.header.seq)
+            list_tmp.append(msg.header.frame_id)
             list_tmp.append(msg.header.stamp.secs)
             list_tmp.append(msg.header.stamp.nsecs)
-            list_tmp.append(msg.header.frame_id)
             # Sentence String -> List
             for detail in msg.sentence[:-3].split(","):
                 if "$" in detail:
