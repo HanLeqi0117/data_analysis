@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+
+<launch>
+
+    <node pkg="data_analysis" type="nmea_exraction.py" name="nmea_exraction" output="screen">
+        <remap from="nmea_sentence" to="nmea_sentence"/>
+        <param name="file_save_path"/>
+    </node>
+
+    <node pkg="data_analysis" type="navsat_fix_extraction.py" name="navsat_fix_extraction" output="screen">
+        <remap from="fix" to="fix"/>
+        <remap from="gps/filtered", to="gps/filtered"/>
+        <param name="file_save_path"/>
+    </node>
+
+</launch>

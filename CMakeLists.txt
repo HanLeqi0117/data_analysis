@@ -167,7 +167,8 @@ target_link_libraries(odometry_to_csv
 ## in contrast to setup.py, you can choose the destination
 catkin_install_python(PROGRAMS
   scripts/nmea_extraction.py
-  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+  scripts/navsat_fix_extraction.py
+DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
 ## Mark executables for installation
