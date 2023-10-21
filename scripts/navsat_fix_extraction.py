@@ -1,6 +1,6 @@
 #! /usr/bin/python3
 
-import os, sys, csv, enum, datetime
+import os, csv, enum, datetime
 import rospy, roslib.packages
 from sensor_msgs.msg import NavSatFix, NavSatStatus
 

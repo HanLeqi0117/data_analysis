@@ -12,11 +12,10 @@ find_package(catkin REQUIRED COMPONENTS
   nav_msgs
   roscpp
   rospy
+  roslib
   std_msgs
-  tf2
-  tf2_geometry_msgs
-  tf2_ros
   nmea_msgs
+  sensor_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -111,7 +110,7 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
     INCLUDE_DIRS include
     LIBRARIES data_analysis
-    CATKIN_DEPENDS geometry_msgs nav_msgs roscpp rospy std_msgs tf2 tf2_geometry_msgs tf2_ros nmea_msgs
+    CATKIN_DEPENDS roscpp rospy nav_msgs nmea_msgs sensor_msgs roslib
     DEPENDS system_lib
 )
 
@@ -127,9 +126,9 @@ include_directories(
 )
 
 ## Declare a C++ library
-add_library(${PROJECT_NAME}
-  src/odometry_to_csv.cpp
-)
+# add_library(${PROJECT_NAME}
+#   src/odometry_to_csv.cpp
+# )
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
