@@ -2,15 +2,15 @@
 
 <launch>
 
-    <node pkg="data_analysis" type="nmea_exraction.py" name="nmea_exraction" output="screen">
-        <remap from="nmea_sentence" to="nmea_sentence"/>
-        <param name="file_save_path"/>
+    <node pkg="data_analysis" type="nmea_extraction.py" name="nmea_exraction" output="screen">
+        <param name="file_save_path" value=""/> <!-- default_value="$(WORK_SPACE)/src/data_analysis/doc" -->
+        <param name="nmea_topic" value=""/> <!-- default_value="nmea_sentence" -->
     </node>
 
     <node pkg="data_analysis" type="navsat_fix_extraction.py" name="navsat_fix_extraction" output="screen">
-        <remap from="fix" to="fix"/>
-        <remap from="gps/filtered", to="gps/filtered"/>
-        <param name="file_save_path"/>
+        <param name="fix_topic" value=""/> <!-- default_value="fix" -->
+        <param name="fix_filtered_topic" value=""/> <!-- default_value="gps/filtered" -->
+        <param name="file_save_path" value=""/> <!-- default_value="$(WORK_SPACE)/src/data_analysis/doc" -->
     </node>
 
 </launch>

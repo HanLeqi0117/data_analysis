@@ -1,4 +1,4 @@
-#! /usr/bin/python3
+#! /usr/bin/python
 
 import os
 import csv
@@ -7,16 +7,16 @@ import roslib.packages
 from datetime import datetime
 from nmea_msgs.msg import Sentence
 
-file_save_path = rospy.get_param("file_save_path", default=os.path.join(roslib.packages.get_pkg_dir(), "doc"))
-recieve_topic_name = rospy.get_param("recieve_topic_name", default="nmea_sentence")
+file_save_path = rospy.get_param("file_save_path", default=os.path.join(roslib.packages.get_pkg_dir("data_analysis"), "doc"))
+nmea_topic = rospy.get_param("nmea_topic", default="nmea_sentence")
 nmea_index_list = ["GGA", "GSV", "GSA", "GLL", "ZDA", "VTG", "RMC"]
 nmea_dict = dict()
 for nmea_index in nmea_index_list:
     nmea_dict[nmea_index] = [[]]
 ros_message_header_list = ["Sequence", "FrameID", "RosStamp"]
 
-# 参考URL:https://www.hdlc.jp/~jh8xvh/jp/gps/nmea.html
-# 参考URL:https://jp.mathworks.com/help/nav/ref/nmeaparser-system-object.html
+# URL:https://www.hdlc.jp/~jh8xvh/jp/gps/nmea.html
+# URL:https://jp.mathworks.com/help/nav/ref/nmeaparser-system-object.html
 header_dict = {
     "GGA":[
         "TalkerID", "MessageID", "UTCTime", 
@@ -58,12 +58,12 @@ header_dict = {
         "ModeIndicator"
     ],
     "RMC":[
-        "TalkerID", "MessageID", "FixStatus", 
+        "TalkerID", "MessageID", "UTCTime", "FixStatus", 
         "Latitude", "LatitudeDirection",
         "Longitude", "LongtitudeDirection",
         "GroundSpeedKnot", "TrueCourseAngle", "UTCDateTime",
         "MagneticVariation", "MagneticVariationDirection",
-        "ModeIndicator"
+        "ModeIndicator", "Validity"
     ]
 }
 
@@ -93,7 +93,7 @@ def shutdown_callback():
     # debug 
     # print(nmea_dict)
     
-    csv_file_name = recieve_topic_name + "_{:%Y_%m_%d_%H_%M_%S}.csv".format(datetime.now())
+    csv_file_name = nmea_topic + "_{:%Y_%m_%d_%H_%M_%S}.csv".format(datetime.now())
     rospy.loginfo("NmeaSentence Data is saved in [{}/{}]".format(file_save_path, csv_file_name))
         
     with open(os.path.join(file_save_path, csv_file_name), "w") as f:
@@ -125,9 +125,9 @@ def shutdown_callback():
             if "GSV" in nmea_index:
                 for nmea_dict_data_row in nmea_dict[nmea_index]:                
                     if len(nmea_dict_data_row) == 17:
-                        header = nmea_dict_data_row[:9]
-                        row1 = nmea_dict_data_row[9:13]
-                        row2 = nmea_dict_data_row[13:17]
+                        header = nmea_dict_data_row[:8]
+                        row1 = nmea_dict_data_row[8:12]
+                        row2 = nmea_dict_data_row[12:16]
                         tail = nmea_dict_data_row[-1:]
                         
                         row_tmp = [nmea_index]
@@ -143,11 +143,11 @@ def shutdown_callback():
                         csv_writer.writerow(row_tmp)
                         
                     elif len(nmea_dict_data_row) == 25:
-                        header = nmea_dict_data_row[:9]
-                        row1 = nmea_dict_data_row[9:13]
-                        row2 = nmea_dict_data_row[13:17]
-                        row3 = nmea_dict_data_row[17:21]
-                        row4 = nmea_dict_data_row[21:25]
+                        header = nmea_dict_data_row[:8]
+                        row1 = nmea_dict_data_row[8:12]
+                        row2 = nmea_dict_data_row[12:16]
+                        row3 = nmea_dict_data_row[16:20]
+                        row4 = nmea_dict_data_row[20:24]
                         tail = nmea_dict_data_row[-1:]
                         
                         row_tmp = [nmea_index]
@@ -173,7 +173,14 @@ def shutdown_callback():
                         row_tmp.extend(row4)
                         row_tmp.extend(tail)
                         csv_writer.writerow(row_tmp)
-                                
+                else:
+                    # Write Detail
+                    for nmea_dict_data_row in nmea_dict[nmea_index]:
+                        if len(nmea_dict_data_row) == 0:
+                            continue
+                        row_tmp = [nmea_index]
+                        row_tmp.extend(nmea_dict_data_row)
+                        csv_writer.writerow(row_tmp)                                
             else:
                 # Write Detail
                 for nmea_dict_data_row in nmea_dict[nmea_index]:
@@ -187,7 +194,7 @@ def shutdown_callback():
 if __name__ == '__main__':
     
     rospy.init_node(name="nmea_extraction")
-    rospy.Subscriber(recieve_topic_name, Sentence, nmea_callback, queue_size=30)
+    rospy.Subscriber(nmea_topic, Sentence, nmea_callback, queue_size=30)
     rospy.loginfo("Ready to receive NmeaSentence from Topic.")
     rospy.spin()
     rospy.on_shutdown(shutdown_callback)
