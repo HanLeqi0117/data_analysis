@@ -6,13 +6,11 @@ import rclpy, roslib.packages
 from rclpy import Node, parameter_service
 from nmea_msgs.msg import Sentence
 from sensor_msgs.msg import NavSatFix, NavSatStatus
+from std_msgs.msg import Header
 
 class NMEAData():
     nmea_index_list = ["GGA", "GSV", "GSA", "GLL", "ZDA", "VTG", "RMC"]
-    nmea_dict = dict()
-    for nmea_index in nmea_index_list:
-        nmea_dict[nmea_index] = [[]]
-    ros_message_header_list = ["Sequence", "FrameID", "RosStamp"]
+    ros_message_header_list = ["Sequence", "FrameID", "Second", "Nanosecond"]
 
     # URL:https://www.hdlc.jp/~jh8xvh/jp/gps/nmea.html
     # URL:https://jp.mathworks.com/help/nav/ref/nmeaparser-system-object.html
@@ -104,10 +102,10 @@ class DataAnalysisNode(Node):
                 "doc"
             )
         )
+        self._nmea_count_ = 1
         
         for topic_name in self._topic_list_.get_parameter_value().string_array_value:
             if "fix" in topic_name:
-                self._fix_sub_ = self.create_subscription(NavSatFix, topic_name, self.fix_subscription)
                 self._fix_data_file_ = open(
                     os.path.join(
                         self._file_path_.get_parameter_value().string_value), 
@@ -118,9 +116,9 @@ class DataAnalysisNode(Node):
                 self._fix_csv_writer_ = csv.writer(self._fix_data_file_)
                 fix_data = FixData()
                 self._fix_csv_writer_.writerow(fix_data.csv_header_list)
-                
+                self._fix_sub_ = self.create_subscription(NavSatFix, topic_name, self.fix_subscription)
+                  
             if "gps/filtered" in topic_name:
-                self._fix_filtered_sub_ = self.create_subscription(NavSatFix, topic_name, self.fix_filtered_subscription)
                 self._fix_filtered_data_file_ = open(
                     os.path.join(
                         self._file_path_.get_parameter_value().string_value), 
@@ -130,10 +128,33 @@ class DataAnalysisNode(Node):
                 )
                 self._fix_filtered_csv_writer_ = csv.writer(self._fix_filtered_data_file_)
                 fix_data = FixData()
-                self._fix_csv_writer_.writerow(fix_data.csv_header_list)
-                
+                self._fix_filtered_csv_writer_.writerow(fix_data.csv_header_list)
+                self._fix_filtered_sub_ = self.create_subscription(NavSatFix, topic_name, self.fix_filtered_subscription)
+
             if "nmea" in topic_name:
+                self._nmea_data_file_ = open(
+                    os.path.join(
+                        self._file_path_.get_parameter_value().string_value), 
+                        "nmea", 
+                        topic_name.replace("/", "_") + "_{:%Y_%m_%d_%H_%M_%S}.csv".format(datetime.datetime.now()),
+                    "w"
+                )
+                self._nmea_csv_writer_ = csv.writer(self._nmea_data_file_)
+                nmea_data = NMEAData()
+                for nmea_index in nmea_data.nmea_index_list:
+                    write_list = nmea_data.ros_message_header_list
+                    write_list.extend(nmea_data.header_dict[nmea_index])
+                    self._nmea_csv_writer_.writerow(nmea_index)
+                    self._nmea_csv_writer_.writerow(write_list)
+                    self._nmea_csv_writer_.writerow([])
+                                
                 self._nmea_sub_ = self.create_subscription(Sentence, topic_name, self.nmea_subscription)
+    
+    def __del__(self):
+        print("save csv files and close them")
+        self._fix_data_file_.close()     
+        self._fix_filtered_data_file_.close()     
+        self._nmea_data_file_.close()     
                 
     def fix_subscription(self, msg = NavSatFix):
         navsat_status = navsat_service = pos_cov_type = ''
@@ -201,39 +222,40 @@ class DataAnalysisNode(Node):
                 str(msg.latitude), str(msg.longitude), str(msg.altitude)
             ]) + ']'
         ))        
-        
     
-    def nmea_subscription(self, nmea_msg = Sentence):
-        self._nmea_data_ = NMEAData()
+    def nmea_subscription(self, msg = Sentence):
+        self.get_logger().info("Get Nmea Sentence: {}".format(msg.sentence))
         
-        self.get_logger().info("Get Nmea Sentence: {}".format(nmea_msg.sentence))
-        for index in nmea_data.nmea_index_list:
-            if index in nmea_msg.sentence:
-                list_tmp = []
-                # Header of ROS Message
-                list_tmp.append(nmea_msg.header.seq)
-                list_tmp.append(nmea_msg.header.frame_id)
-                list_tmp.append(nmea_msg.header.stamp.to_sec())
-                # Sentence String -> List
-                for detail in nmea_msg.sentence[:-3].split(","):
-                    if "$" in detail:
-                        str_tmp = detail.strip("$")
-                        list_tmp.append(str_tmp[:-3])
-                        list_tmp.append(str_tmp[2:])
-                    else:
-                        list_tmp.append(detail)
-
-                nmea_dict[index].append(list_tmp)
-                # debug
-                # print(nmea_dict)
-
+        nmea_data = NMEAData()
+        self.get_clock()
         
-
+        write_list = []
+        # Header of ROS Message
+        write_list.append(self._nmea_count_)
+        write_list.append(msg.header.frame_id)
+        write_list.append(msg.header.sec)
+        write_list.append(msg.header.nanosec)
         
+        for nmea_detail in msg.sentence[:-3].split(","):
+            if "$" in nmea_detail:
+                str_tmp = nmea_detail.strip("$")
+                write_list.append(str_tmp[:-3])
+                write_list.append(str_tmp[2:])
+            else:
+                write_list.append(nmea_detail)
         
+        self._nmea_csv_writer_.writerow(write_list)
+        self._nmea_count_ += 1
+                
+        # debug
+        # print(nmea_dict)
 
-def main():
-    pass
+def main(args=None):
+    rclpy.init(args=args)
+    data_analysis_node = DataAnalysisNode()
+    
+    rclpy.spin(data_analysis_node)
+    rclpy.try_shutdown()
 
 if __name__ == '__main__':
     main()
