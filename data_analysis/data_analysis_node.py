@@ -1,9 +1,8 @@
 #! /usr/bin/python
 
 # import modules
-import os, csv, enum, datetime
-import rclpy, roslib.packages
-from rclpy import Node, parameter_service
+import os, csv, enum, datetime, rclpy
+from rclpy.node import Node, Parameter
 from nmea_msgs.msg import Sentence
 from sensor_msgs.msg import NavSatFix, NavSatStatus
 from std_msgs.msg import Header
@@ -93,50 +92,56 @@ class DataAnalysisNode(Node):
         super().__init__("data_analysis_node")
         self._topic_list_ = self.declare_parameter(
             name="topic_list",
-            value=[str]
+            value=[str()]
         )
         self._file_path_ = self.declare_parameter(
             name="file_path",
             value=os.path.join(
-                roslib.packages.get_pkg_dir("data_analysis"),
-                "doc"
+                os.environ["HOME"],
+                "whill_ws_iron", "src", 
+                "data_analysis", "doc"
             )
         )
-        self._nmea_count_ = 1
         
+        self._nmea_count_ = 1
         for topic_name in self._topic_list_.get_parameter_value().string_array_value:
             if "fix" in topic_name:
                 self._fix_data_file_ = open(
                     os.path.join(
-                        self._file_path_.get_parameter_value().string_value), 
-                        "fix", 
-                        topic_name.replace("/", "_") + "_{:%Y_%m_%d_%H_%M_%S}.csv".format(datetime.datetime.now()),
+                        self._file_path_.get_parameter_value().string_value,
+                        topic_name.replace("/", "_") + "_" + \
+                        str(self.get_clock().now().to_msg().sec) + ".csv"
+                    ),
                     "w"
                 )
                 self._fix_csv_writer_ = csv.writer(self._fix_data_file_)
                 fix_data = FixData()
                 self._fix_csv_writer_.writerow(fix_data.csv_header_list)
-                self._fix_sub_ = self.create_subscription(NavSatFix, topic_name, self.fix_subscription)
+                self._fix_sub_ = self.create_subscription(NavSatFix, topic_name, self.fix_subscription, qos_profile=10)
+                self.get_logger().info("Subscribe to {}".format(topic_name))
                   
             if "gps/filtered" in topic_name:
                 self._fix_filtered_data_file_ = open(
                     os.path.join(
-                        self._file_path_.get_parameter_value().string_value), 
-                        "fix", 
-                        topic_name.replace("/", "_") + "_{:%Y_%m_%d_%H_%M_%S}.csv".format(datetime.datetime.now()),
+                        self._file_path_.get_parameter_value().string_value,
+                        topic_name.replace("/", "_") + "_" + \
+                        str(self.get_clock().now().to_msg().sec) + ".csv"
+                    ),
                     "w"
                 )
                 self._fix_filtered_csv_writer_ = csv.writer(self._fix_filtered_data_file_)
                 fix_data = FixData()
                 self._fix_filtered_csv_writer_.writerow(fix_data.csv_header_list)
-                self._fix_filtered_sub_ = self.create_subscription(NavSatFix, topic_name, self.fix_filtered_subscription)
+                self._fix_filtered_sub_ = self.create_subscription(NavSatFix, topic_name, self.fix_filtered_subscription, qos_profile=10)
+                self.get_logger().info("Subscribe to {}".format(topic_name))
 
             if "nmea" in topic_name:
                 self._nmea_data_file_ = open(
                     os.path.join(
-                        self._file_path_.get_parameter_value().string_value), 
-                        "nmea", 
-                        topic_name.replace("/", "_") + "_{:%Y_%m_%d_%H_%M_%S}.csv".format(datetime.datetime.now()),
+                        self._file_path_.get_parameter_value().string_value,
+                        topic_name.replace("/", "_") + "_" + \
+                        str(self.get_clock().now().to_msg().sec) + ".csv"
+                    ),
                     "w"
                 )
                 self._nmea_csv_writer_ = csv.writer(self._nmea_data_file_)
@@ -148,13 +153,8 @@ class DataAnalysisNode(Node):
                     self._nmea_csv_writer_.writerow(write_list)
                     self._nmea_csv_writer_.writerow([])
                                 
-                self._nmea_sub_ = self.create_subscription(Sentence, topic_name, self.nmea_subscription)
-    
-    def __del__(self):
-        print("save csv files and close them")
-        self._fix_data_file_.close()     
-        self._fix_filtered_data_file_.close()     
-        self._nmea_data_file_.close()     
+                self._nmea_sub_ = self.create_subscription(Sentence, topic_name, self.nmea_subscription, qos_profile=10)
+                self.get_logger().info("Subscribe to {}".format(topic_name))
                 
     def fix_subscription(self, msg = NavSatFix):
         navsat_status = navsat_service = pos_cov_type = ''
@@ -253,7 +253,6 @@ class DataAnalysisNode(Node):
 def main(args=None):
     rclpy.init(args=args)
     data_analysis_node = DataAnalysisNode()
-    
     rclpy.spin(data_analysis_node)
     rclpy.try_shutdown()
 
