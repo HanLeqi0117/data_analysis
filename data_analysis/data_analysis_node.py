@@ -109,7 +109,7 @@ class DataAnalysisNode(Node):
                 self._fix_data_file_ = open(
                     os.path.join(
                         self._file_path_.get_parameter_value().string_value,
-                        topic_name.replace("/", "_") + "_" + \
+                        topic_name.replace("/", "_")[1:] + "_" + \
                         str(self.get_clock().now().to_msg().sec) + ".csv"
                     ),
                     "w"
@@ -124,7 +124,7 @@ class DataAnalysisNode(Node):
                 self._fix_filtered_data_file_ = open(
                     os.path.join(
                         self._file_path_.get_parameter_value().string_value,
-                        topic_name.replace("/", "_") + "_" + \
+                        topic_name.replace("/", "_")[1:] + "_" + \
                         str(self.get_clock().now().to_msg().sec) + ".csv"
                     ),
                     "w"
@@ -139,7 +139,7 @@ class DataAnalysisNode(Node):
                 self._nmea_data_file_ = open(
                     os.path.join(
                         self._file_path_.get_parameter_value().string_value,
-                        topic_name.replace("/", "_") + "_" + \
+                        topic_name.replace("/", "_")[1:] + "_" + \
                         str(self.get_clock().now().to_msg().sec) + ".csv"
                     ),
                     "w"
@@ -149,9 +149,10 @@ class DataAnalysisNode(Node):
                 for nmea_index in nmea_data.nmea_index_list:
                     write_list = nmea_data.ros_message_header_list
                     write_list.extend(nmea_data.header_dict[nmea_index])
-                    self._nmea_csv_writer_.writerow(nmea_index)
+                    self._nmea_csv_writer_.writerow([nmea_index])
                     self._nmea_csv_writer_.writerow(write_list)
-                    self._nmea_csv_writer_.writerow([])
+                
+                self._nmea_csv_writer_.writerow([])
                                 
                 self._nmea_sub_ = self.create_subscription(Sentence, topic_name, self.nmea_subscription, qos_profile=10)
                 self.get_logger().info("Subscribe to {}".format(topic_name))
