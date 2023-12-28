@@ -5,7 +5,8 @@ import os, csv, enum, datetime, rclpy
 from rclpy.node import Node, Parameter
 from nmea_msgs.msg import Sentence
 from sensor_msgs.msg import NavSatFix, NavSatStatus
-from std_msgs.msg import Header
+from nav_msgs.msg import Odometry
+from tf_transformations import euler_from_quaternion
 
 class NMEAData():
     nmea_index_list = ["GGA", "GSV", "GSA", "GLL", "ZDA", "VTG", "RMC"]
@@ -83,7 +84,14 @@ class FixData():
         COVARIANCE_TYPE_APPROXIMATED = NavSatFix.COVARIANCE_TYPE_APPROXIMATED
         COVARIANCE_TYPE_DIAGONAL_KNOWN = NavSatFix.COVARIANCE_TYPE_DIAGONAL_KNOWN
         COVARIANCE_TYPE_KNOWN = NavSatFix.COVARIANCE_TYPE_KNOWN
-
+        
+class OdometryData():
+    csv_header_list = [
+        "TopicName", "Time", "FrameID", "ChildFrameID", 
+        "Pose-x", "Pose-y", "Pose-z", "Pose-r", "Pose-p", "Pose-y", "Pose-covariance",
+        "Twist-linear-x", "Twist-linear-y", "Twist-linear-z", 
+        "Twist-angular-x", "Twist-angular-y", "Twist-angular-z", "Twist-covariance"
+    ]
 
 class DataAnalysisNode(Node):
     
@@ -98,17 +106,25 @@ class DataAnalysisNode(Node):
             name="file_path",
             value=os.path.join(
                 os.environ["HOME"],
-                "whill_ws_iron", "src", 
-                "data_analysis", "doc"
+                "rosbag_analysis", "doc"
             )
         )
         
+        for topic_name in self._topic_list_.get_parameter_value().string_array_value:
+            make_dir_path = os.path.join(self._file_path_.get_parameter_value().string_value, topic_name)
+            if os.path.exists(make_dir_path):
+                continue
+            else:
+                os.makedirs(make_dir_path)
+        
         self._nmea_count_ = 1
+
         for topic_name in self._topic_list_.get_parameter_value().string_array_value:
             if "fix" in topic_name:
                 self._fix_data_file_ = open(
                     os.path.join(
                         self._file_path_.get_parameter_value().string_value,
+                        topic_name,
                         topic_name.replace("/", "_")[1:] + "_" + \
                         str(self.get_clock().now().to_msg().sec) + ".csv"
                     ),
@@ -117,13 +133,14 @@ class DataAnalysisNode(Node):
                 self._fix_csv_writer_ = csv.writer(self._fix_data_file_)
                 fix_data = FixData()
                 self._fix_csv_writer_.writerow(fix_data.csv_header_list)
-                self._fix_sub_ = self.create_subscription(NavSatFix, topic_name, self.fix_subscription, qos_profile=10)
+                self._fix_sub_ = self.create_subscription(NavSatFix, topic_name, self.fix_callback, qos_profile=10)
                 self.get_logger().info("Subscribe to {}".format(topic_name))
                   
             if "gps/filtered" in topic_name:
                 self._fix_filtered_data_file_ = open(
                     os.path.join(
                         self._file_path_.get_parameter_value().string_value,
+                        topic_name,
                         topic_name.replace("/", "_")[1:] + "_" + \
                         str(self.get_clock().now().to_msg().sec) + ".csv"
                     ),
@@ -132,13 +149,14 @@ class DataAnalysisNode(Node):
                 self._fix_filtered_csv_writer_ = csv.writer(self._fix_filtered_data_file_)
                 fix_data = FixData()
                 self._fix_filtered_csv_writer_.writerow(fix_data.csv_header_list)
-                self._fix_filtered_sub_ = self.create_subscription(NavSatFix, topic_name, self.fix_filtered_subscription, qos_profile=10)
+                self._fix_filtered_sub_ = self.create_subscription(NavSatFix, topic_name, self.fix_filtered_callback, qos_profile=10)
                 self.get_logger().info("Subscribe to {}".format(topic_name))
 
             if "nmea" in topic_name:
                 self._nmea_data_file_ = open(
                     os.path.join(
                         self._file_path_.get_parameter_value().string_value,
+                        topic_name,
                         topic_name.replace("/", "_")[1:] + "_" + \
                         str(self.get_clock().now().to_msg().sec) + ".csv"
                     ),
@@ -154,10 +172,56 @@ class DataAnalysisNode(Node):
                 
                 self._nmea_csv_writer_.writerow([])
                                 
-                self._nmea_sub_ = self.create_subscription(Sentence, topic_name, self.nmea_subscription, qos_profile=10)
+                self._nmea_sub_ = self.create_subscription(Sentence, topic_name, self.nmea_callback, qos_profile=10)
                 self.get_logger().info("Subscribe to {}".format(topic_name))
                 
-    def fix_subscription(self, msg = NavSatFix):
+            if "odometry" in topic_name:
+                odometry_data = OdometryData()
+                
+                if "filtered/global" in topic_name:
+                    self._global_odometry_data_file_ = open(
+                        os.path.join(
+                            self._file_path_.get_parameter_value().string_value,
+                            topic_name,
+                            topic_name.replace("/", "_")[1:] + "_" + \
+                            str(self.get_clock().now().to_msg().sec) + ".csv"
+                        ),
+                        "w"
+                    )
+                    self._global_odometry_csv_writer_ = csv.writer(self._global_odometry_data_file_)
+                    self._global_odometry_csv_writer_.writerow(odometry_data.csv_header_list)
+                    self._global_odometry_sub_ = self.create_subscription(Odometry, "odometry/filtered/global", self.global_odom_callback, qos_profile=20)
+                
+                if "filtered/local" in topic_name:
+                    self._local_odometry_data_file_ = open(
+                        os.path.join(
+                            self._file_path_.get_parameter_value().string_value,
+                            topic_name,
+                            topic_name.replace("/", "_")[1:] + "_" + \
+                            str(self.get_clock().now().to_msg().sec) + ".csv"
+                        ),
+                        "w"
+                    )
+                    self._local_odometry_csv_writer_ = csv.writer(self._local_odometry_data_file_)
+                    self._local_odometry_csv_writer_.writerow(odometry_data.csv_header_list)
+                    self._local_odometry_sub_ = self.create_subscription(Odometry, "odometry/filtered/local", self.local_odom_callback, qos_profile=20)
+                    
+                if "gps" in topic_name:
+                    self._gps_odometry_data_file_ = open(
+                        os.path.join(
+                            self._file_path_.get_parameter_value().string_value,
+                            topic_name,
+                            topic_name.replace("/", "_")[1:] + "_" + \
+                            str(self.get_clock().now().to_msg().sec) + ".csv"
+                        ),
+                        "w"
+                    )
+                    self._gps_odometry_csv_writer_ = csv.writer(self._gps_odometry_data_file_)
+                    self._gps_odometry_csv_writer_.writerow(odometry_data.csv_header_list)
+                    self._gps_odometry_sub_ = self.create_subscription(Odometry, "odometry/gps", self.gps_odom_callback, qos_profile=20) 
+
+            
+    def fix_callback(self, msg = NavSatFix):
         navsat_status = navsat_service = pos_cov_type = ''
         fix_data = FixData()
         
@@ -190,8 +254,7 @@ class DataAnalysisNode(Node):
             ]) + ']'
         ))
         
-        
-    def fix_filtered_subscription(self, msg = NavSatFix):
+    def fix_filtered_callback(self, msg = NavSatFix):
         navsat_status = navsat_service = pos_cov_type = ''
         fix_data = FixData()
         
@@ -224,7 +287,7 @@ class DataAnalysisNode(Node):
             ]) + ']'
         ))        
     
-    def nmea_subscription(self, msg = Sentence):
+    def nmea_callback(self, msg = Sentence):
         self.get_logger().info("Get Nmea Sentence: {}".format(msg.sentence))
         
         nmea_data = NMEAData()
@@ -250,6 +313,48 @@ class DataAnalysisNode(Node):
                 
         # debug
         # print(nmea_dict)
+        
+    def global_odom_callback(self, msg=Odometry):
+        stamp = float(msg.header.stamp.sec) + 10**-9 * msg.header.stamp.nanosec
+        euler = euler_from_quaternion(msg.pose.orientation)
+        writer_list = [
+            "odometry/filtered/global", stamp, msg.header.frame_id, msg.child_frame_id, 
+            msg.pose.position.x, msg.pose.position.y, msg.pose.position.z, euler[0], euler[1],euler[2],
+            '[{}]'.format(', '.join(msg.pose.covariance)),
+            msg.twist.twist.linear.x, msg.twist.twist.linear.y, msg.twist.twist.linear.z,
+            msg.twist.twist.angular.x, msg.twist.twist.angular.y, msg.twist.twist.angular.z,
+            '[{}]'.format(', '.join(msg.twist.covariance)),
+        ]
+        
+        self._global_odometry_csv_writer_.writerow(writer_list)
+        
+    def local_odom_callback(self, msg=Odometry):
+        stamp = float(msg.header.stamp.sec) + 10**-9 * msg.header.stamp.nanosec
+        euler = euler_from_quaternion(msg.pose.orientation)
+        writer_list = [
+            "odometry/filtered/global", stamp, msg.header.frame_id, msg.child_frame_id, 
+            msg.pose.position.x, msg.pose.position.y, msg.pose.position.z, euler[0], euler[1],euler[2],
+            '[{}]'.format(', '.join(msg.pose.covariance)),
+            msg.twist.twist.linear.x, msg.twist.twist.linear.y, msg.twist.twist.linear.z,
+            msg.twist.twist.angular.x, msg.twist.twist.angular.y, msg.twist.twist.angular.z,
+            '[{}]'.format(', '.join(msg.twist.covariance)),
+        ]
+        
+        self._local_odometry_csv_writer_.writerow(writer_list)
+    
+    def gps_odom_callback(self, msg=Odometry):
+        stamp = float(msg.header.stamp.sec) + 10**-9 * msg.header.stamp.nanosec
+        euler = euler_from_quaternion(msg.pose.orientation)
+        writer_list = [
+            "odometry/filtered/global", stamp, msg.header.frame_id, msg.child_frame_id, 
+            msg.pose.position.x, msg.pose.position.y, msg.pose.position.z, euler[0], euler[1],euler[2],
+            '[{}]'.format(', '.join(msg.pose.covariance)),
+            msg.twist.twist.linear.x, msg.twist.twist.linear.y, msg.twist.twist.linear.z,
+            msg.twist.twist.angular.x, msg.twist.twist.angular.y, msg.twist.twist.angular.z,
+            '[{}]'.format(', '.join(msg.twist.covariance)),
+        ]
+        
+        self._gps_odometry_csv_writer_.writerow(writer_list)
 
 def main(args=None):
     rclpy.init(args=args)

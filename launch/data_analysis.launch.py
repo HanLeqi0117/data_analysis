@@ -19,7 +19,6 @@ def generate_launch_description():
             {"topic_list" : ["/ublox/fix", "/gps/filtered", "/nmea"]},
             {"file_path" : os.path.join(
                 os.environ["HOME"],
-                "whill_ws_iron", "src", 
                 "data_analysis", "doc"
             )}
         ]
