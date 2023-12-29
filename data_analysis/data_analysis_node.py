@@ -125,7 +125,7 @@ class DataAnalysisNode(Node):
                     os.path.join(
                         self._file_path_.get_parameter_value().string_value,
                         topic_name,
-                        topic_name.replace("/", "_")[1:] + "_" + \
+                        topic_name.replace("/", "_") + "_" + \
                         str(self.get_clock().now().to_msg().sec) + ".csv"
                     ),
                     "w"
@@ -141,7 +141,7 @@ class DataAnalysisNode(Node):
                     os.path.join(
                         self._file_path_.get_parameter_value().string_value,
                         topic_name,
-                        topic_name.replace("/", "_")[1:] + "_" + \
+                        topic_name.replace("/", "_") + "_" + \
                         str(self.get_clock().now().to_msg().sec) + ".csv"
                     ),
                     "w"
@@ -157,7 +157,7 @@ class DataAnalysisNode(Node):
                     os.path.join(
                         self._file_path_.get_parameter_value().string_value,
                         topic_name,
-                        topic_name.replace("/", "_")[1:] + "_" + \
+                        topic_name.replace("/", "_") + "_" + \
                         str(self.get_clock().now().to_msg().sec) + ".csv"
                     ),
                     "w"
@@ -183,7 +183,7 @@ class DataAnalysisNode(Node):
                         os.path.join(
                             self._file_path_.get_parameter_value().string_value,
                             topic_name,
-                            topic_name.replace("/", "_")[1:] + "_" + \
+                            topic_name.replace("/", "_") + "_" + \
                             str(self.get_clock().now().to_msg().sec) + ".csv"
                         ),
                         "w"
@@ -191,13 +191,14 @@ class DataAnalysisNode(Node):
                     self._global_odometry_csv_writer_ = csv.writer(self._global_odometry_data_file_)
                     self._global_odometry_csv_writer_.writerow(odometry_data.csv_header_list)
                     self._global_odometry_sub_ = self.create_subscription(Odometry, "odometry/filtered/global", self.global_odom_callback, qos_profile=20)
+                    self.get_logger().info("Subscribe to {}".format(topic_name))
                 
                 if "filtered/local" in topic_name:
                     self._local_odometry_data_file_ = open(
                         os.path.join(
                             self._file_path_.get_parameter_value().string_value,
                             topic_name,
-                            topic_name.replace("/", "_")[1:] + "_" + \
+                            topic_name.replace("/", "_") + "_" + \
                             str(self.get_clock().now().to_msg().sec) + ".csv"
                         ),
                         "w"
@@ -205,22 +206,24 @@ class DataAnalysisNode(Node):
                     self._local_odometry_csv_writer_ = csv.writer(self._local_odometry_data_file_)
                     self._local_odometry_csv_writer_.writerow(odometry_data.csv_header_list)
                     self._local_odometry_sub_ = self.create_subscription(Odometry, "odometry/filtered/local", self.local_odom_callback, qos_profile=20)
+                    self.get_logger().info("Subscribe to {}".format(topic_name))
                     
                 if "gps" in topic_name:
                     self._gps_odometry_data_file_ = open(
                         os.path.join(
                             self._file_path_.get_parameter_value().string_value,
                             topic_name,
-                            topic_name.replace("/", "_")[1:] + "_" + \
+                            topic_name.replace("/", "_") + "_" + \
                             str(self.get_clock().now().to_msg().sec) + ".csv"
                         ),
                         "w"
                     )
                     self._gps_odometry_csv_writer_ = csv.writer(self._gps_odometry_data_file_)
                     self._gps_odometry_csv_writer_.writerow(odometry_data.csv_header_list)
-                    self._gps_odometry_sub_ = self.create_subscription(Odometry, "odometry/gps", self.gps_odom_callback, qos_profile=20) 
+                    self._gps_odometry_sub_ = self.create_subscription(Odometry, "odometry/gps", self.gps_odom_callback, qos_profile=20)
+                    self.get_logger().info("Subscribe to {}".format(topic_name))
 
-            
+
     def fix_callback(self, msg = NavSatFix):
         navsat_status = navsat_service = pos_cov_type = ''
         fix_data = FixData()
@@ -242,14 +245,14 @@ class DataAnalysisNode(Node):
         pos_cov_string = '[[{}], [{}], [{}]]'.format(pos_cov_row1, pos_cov_row2, pos_cov_row3)
                 
         self._fix_csv_writer_.writerow([
-            'fix', msg.header.frame_id, msg.header.stamp.to_sec(), 
+            'fix', msg.header.frame_id, msg.header.stamp.sec, 
             msg.latitude, msg.longitude, msg.altitude, 
             navsat_status, navsat_service, pos_cov_type, pos_cov_string
         ])
         
         self.get_logger().info("Get Fix Data: {}".format(
             '[' + ', '.join([
-                'fix', msg.header.frame_id, str(msg.header.stamp.to_sec()),
+                'fix', msg.header.frame_id, str(msg.header.stamp.sec),
                 str(msg.latitude), str(msg.longitude), str(msg.altitude)
             ]) + ']'
         ))
@@ -275,14 +278,14 @@ class DataAnalysisNode(Node):
         pos_cov_string = '[[{}], [{}], [{}]]'.format(pos_cov_row1, pos_cov_row2, pos_cov_row3)
                 
         self._fix_filtered_csv_writer_.writerow([
-            'fix_filtered', msg.header.frame_id, msg.header.stamp.to_sec(), 
+            'fix_filtered', msg.header.frame_id, msg.header.stamp.sec, 
             msg.latitude, msg.longitude, msg.altitude, 
             navsat_status, navsat_service, pos_cov_type, pos_cov_string
         ])
         
         self.get_logger().info("Get Fix Data: {}".format(
             '[' + ', '.join([
-                'fix_filtered', msg.header.frame_id, str(msg.header.stamp.to_sec()),
+                'fix_filtered', msg.header.frame_id, str(msg.header.stamp.sec),
                 str(msg.latitude), str(msg.longitude), str(msg.altitude)
             ]) + ']'
         ))        
@@ -297,8 +300,8 @@ class DataAnalysisNode(Node):
         # Header of ROS Message
         write_list.append(self._nmea_count_)
         write_list.append(msg.header.frame_id)
-        write_list.append(msg.header.sec)
-        write_list.append(msg.header.nanosec)
+        write_list.append(msg.header.stamp.sec)
+        write_list.append(msg.header.stamp.nanosec)
         
         for nmea_detail in msg.sentence[:-3].split(","):
             if "$" in nmea_detail:
@@ -316,42 +319,57 @@ class DataAnalysisNode(Node):
         
     def global_odom_callback(self, msg=Odometry):
         stamp = float(msg.header.stamp.sec) + 10**-9 * msg.header.stamp.nanosec
-        euler = euler_from_quaternion(msg.pose.orientation)
+        euler = euler_from_quaternion([
+            msg.pose.pose.orientation.x,
+            msg.pose.pose.orientation.y,
+            msg.pose.pose.orientation.z,
+            msg.pose.pose.orientation.w
+        ])
         writer_list = [
             "odometry/filtered/global", stamp, msg.header.frame_id, msg.child_frame_id, 
-            msg.pose.position.x, msg.pose.position.y, msg.pose.position.z, euler[0], euler[1],euler[2],
-            '[{}]'.format(', '.join(msg.pose.covariance)),
+            msg.pose.pose.position.x, msg.pose.pose.position.y, msg.pose.pose.position.z, euler[0], euler[1], euler[2],
+            '[{}]'.format(', '.join(str(msg.pose.covariance))),
             msg.twist.twist.linear.x, msg.twist.twist.linear.y, msg.twist.twist.linear.z,
             msg.twist.twist.angular.x, msg.twist.twist.angular.y, msg.twist.twist.angular.z,
-            '[{}]'.format(', '.join(msg.twist.covariance)),
+            '[{}]'.format(', '.join(str(msg.twist.covariance))),
         ]
         
         self._global_odometry_csv_writer_.writerow(writer_list)
         
     def local_odom_callback(self, msg=Odometry):
         stamp = float(msg.header.stamp.sec) + 10**-9 * msg.header.stamp.nanosec
-        euler = euler_from_quaternion(msg.pose.orientation)
+        euler = euler_from_quaternion([
+            msg.pose.pose.orientation.x,
+            msg.pose.pose.orientation.y,
+            msg.pose.pose.orientation.z,
+            msg.pose.pose.orientation.w
+        ])
         writer_list = [
-            "odometry/filtered/global", stamp, msg.header.frame_id, msg.child_frame_id, 
-            msg.pose.position.x, msg.pose.position.y, msg.pose.position.z, euler[0], euler[1],euler[2],
-            '[{}]'.format(', '.join(msg.pose.covariance)),
+            "odometry/filtered/local", stamp, msg.header.frame_id, msg.child_frame_id, 
+            msg.pose.pose.position.x, msg.pose.pose.position.y, msg.pose.pose.position.z, euler[0], euler[1], euler[2],
+            '[{}]'.format(', '.join(str(msg.pose.covariance))),
             msg.twist.twist.linear.x, msg.twist.twist.linear.y, msg.twist.twist.linear.z,
             msg.twist.twist.angular.x, msg.twist.twist.angular.y, msg.twist.twist.angular.z,
-            '[{}]'.format(', '.join(msg.twist.covariance)),
+            '[{}]'.format(', '.join(str(msg.twist.covariance))),
         ]
         
         self._local_odometry_csv_writer_.writerow(writer_list)
     
     def gps_odom_callback(self, msg=Odometry):
         stamp = float(msg.header.stamp.sec) + 10**-9 * msg.header.stamp.nanosec
-        euler = euler_from_quaternion(msg.pose.orientation)
+        euler = euler_from_quaternion([
+            msg.pose.pose.orientation.x,
+            msg.pose.pose.orientation.y,
+            msg.pose.pose.orientation.z,
+            msg.pose.pose.orientation.w
+        ])
         writer_list = [
-            "odometry/filtered/global", stamp, msg.header.frame_id, msg.child_frame_id, 
-            msg.pose.position.x, msg.pose.position.y, msg.pose.position.z, euler[0], euler[1],euler[2],
-            '[{}]'.format(', '.join(msg.pose.covariance)),
+            "odometry/gps", stamp, msg.header.frame_id, msg.child_frame_id, 
+            msg.pose.pose.position.x, msg.pose.pose.position.y, msg.pose.pose.position.z, euler[0], euler[1], euler[2],
+            '[{}]'.format(', '.join(str(msg.pose.covariance))),
             msg.twist.twist.linear.x, msg.twist.twist.linear.y, msg.twist.twist.linear.z,
             msg.twist.twist.angular.x, msg.twist.twist.angular.y, msg.twist.twist.angular.z,
-            '[{}]'.format(', '.join(msg.twist.covariance)),
+            '[{}]'.format(', '.join(str(msg.twist.covariance))),
         ]
         
         self._gps_odometry_csv_writer_.writerow(writer_list)

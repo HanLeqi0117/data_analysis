@@ -16,7 +16,7 @@ def generate_launch_description():
         executable="data_analysis_node",
         name="data_analysis_node",
         parameters=[
-            {"topic_list" : ["/ublox/fix", "/gps/filtered", "/nmea"]},
+            {"topic_list" : ["ublox/fix", "gps/filtered", "nmea", "odometry/filtered/global", "odometry/filtered/local", "odometry/gps"]},
             {"file_path" : os.path.join(
                 os.environ["HOME"],
                 "data_analysis", "doc"
