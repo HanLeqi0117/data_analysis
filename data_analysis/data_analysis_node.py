@@ -12,7 +12,7 @@ class NMEAData():
     nmea_index_list = ["GGA", "GSV", "GSA", "GLL", "ZDA", "VTG", "RMC"]
     ros_message_header_list = ["Sequence", "FrameID", "Second", "Nanosecond"]
 
-    # URL:https://www.hdlc.jp/~jh8xvh/jp/gps/nmea.html
+    # URL:https://www.hdlc.jp/~jh8xvh/jp/gnss/nmea.html
     # URL:https://jp.mathworks.com/help/nav/ref/nmeaparser-system-object.html
     header_dict = {
         "GGA":[
@@ -136,7 +136,7 @@ class DataAnalysisNode(Node):
                 self._fix_sub_ = self.create_subscription(NavSatFix, topic_name, self.fix_callback, qos_profile=10)
                 self.get_logger().info("Subscribe to {}".format(topic_name))
                   
-            if "gps/filtered" in topic_name:
+            if "gnss/filtered" in topic_name:
                 self._fix_filtered_data_file_ = open(
                     os.path.join(
                         self._file_path_.get_parameter_value().string_value,
@@ -208,7 +208,7 @@ class DataAnalysisNode(Node):
                     self._local_odometry_sub_ = self.create_subscription(Odometry, "odometry/filtered/local", self.local_odom_callback, qos_profile=20)
                     self.get_logger().info("Subscribe to {}".format(topic_name))
                     
-                if "gps" in topic_name:
+                if "gnss" in topic_name:
                     self._gps_odometry_data_file_ = open(
                         os.path.join(
                             self._file_path_.get_parameter_value().string_value,
@@ -220,11 +220,11 @@ class DataAnalysisNode(Node):
                     )
                     self._gps_odometry_csv_writer_ = csv.writer(self._gps_odometry_data_file_)
                     self._gps_odometry_csv_writer_.writerow(odometry_data.csv_header_list)
-                    self._gps_odometry_sub_ = self.create_subscription(Odometry, "odometry/gps", self.gps_odom_callback, qos_profile=20)
+                    self._gps_odometry_sub_ = self.create_subscription(Odometry, "odometry/gnss", self.gps_odom_callback, qos_profile=20)
                     self.get_logger().info("Subscribe to {}".format(topic_name))
 
 
-    def fix_callback(self, msg = NavSatFix):
+    def fix_callback(self, msg : NavSatFix):
         navsat_status = navsat_service = pos_cov_type = ''
         fix_data = FixData()
         
@@ -257,7 +257,7 @@ class DataAnalysisNode(Node):
             ]) + ']'
         ))
         
-    def fix_filtered_callback(self, msg = NavSatFix):
+    def fix_filtered_callback(self, msg : NavSatFix):
         navsat_status = navsat_service = pos_cov_type = ''
         fix_data = FixData()
         
@@ -290,7 +290,7 @@ class DataAnalysisNode(Node):
             ]) + ']'
         ))        
     
-    def nmea_callback(self, msg = Sentence):
+    def nmea_callback(self, msg : Sentence):
         self.get_logger().info("Get Nmea Sentence: {}".format(msg.sentence))
         
         nmea_data = NMEAData()
@@ -317,7 +317,7 @@ class DataAnalysisNode(Node):
         # debug
         # print(nmea_dict)
         
-    def global_odom_callback(self, msg=Odometry):
+    def global_odom_callback(self, msg : Odometry):
         stamp = float(msg.header.stamp.sec) + 10**-9 * msg.header.stamp.nanosec
         euler = euler_from_quaternion([
             msg.pose.pose.orientation.x,
@@ -336,7 +336,7 @@ class DataAnalysisNode(Node):
         
         self._global_odometry_csv_writer_.writerow(writer_list)
         
-    def local_odom_callback(self, msg=Odometry):
+    def local_odom_callback(self, msg : Odometry):
         stamp = float(msg.header.stamp.sec) + 10**-9 * msg.header.stamp.nanosec
         euler = euler_from_quaternion([
             msg.pose.pose.orientation.x,
@@ -355,7 +355,7 @@ class DataAnalysisNode(Node):
         
         self._local_odometry_csv_writer_.writerow(writer_list)
     
-    def gps_odom_callback(self, msg=Odometry):
+    def gps_odom_callback(self, msg : Odometry):
         stamp = float(msg.header.stamp.sec) + 10**-9 * msg.header.stamp.nanosec
         euler = euler_from_quaternion([
             msg.pose.pose.orientation.x,
@@ -364,7 +364,7 @@ class DataAnalysisNode(Node):
             msg.pose.pose.orientation.w
         ])
         writer_list = [
-            "odometry/gps", stamp, msg.header.frame_id, msg.child_frame_id, 
+            "odometry/gnss", stamp, msg.header.frame_id, msg.child_frame_id, 
             msg.pose.pose.position.x, msg.pose.pose.position.y, msg.pose.pose.position.z, euler[0], euler[1], euler[2],
             '[{}]'.format(', '.join(str(msg.pose.covariance))),
             msg.twist.twist.linear.x, msg.twist.twist.linear.y, msg.twist.twist.linear.z,
