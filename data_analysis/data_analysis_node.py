@@ -105,7 +105,7 @@ class DataAnalysisNode(Node):
         self._file_path_ = self.declare_parameter(
             name="file_path",
             value=os.path.join(
-                os.environ["HOME"],
+                os.environ["HOME"], "Documents",
                 "rosbag_analysis", "doc"
             )
         )
