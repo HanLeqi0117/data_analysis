@@ -100,7 +100,7 @@ class DataAnalysisNode(Node):
         super().__init__("data_analysis_node")
         self._topic_list_ = self.declare_parameter(
             name="topic_list",
-            value=["/gnss/fix", "/ublox/nmea"]
+            value=["gnss/fix", "ublox/nmea"]
         )
         self._file_path_ = self.declare_parameter(
             name="file_path",
